@@ -14,3 +14,9 @@ config :phoenix_api, PhoenixApiWeb.Endpoint,
   server: false
 
 config :logger, level: :warn
+
+config :phoenix_api, :import_rate_limit,
+  user_limit: 1000,
+  user_window_seconds: 10 * 60,
+  global_limit: 10_000,
+  global_window_seconds: 60 * 60

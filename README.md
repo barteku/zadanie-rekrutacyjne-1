@@ -27,6 +27,8 @@ Dostęp do aplikacji:
 - Symfony App: http://localhost:8000
 - Phoenix API: http://localhost:4000
 
+Uwaga: migracja `Version20260414000000` tworzy rozszerzenie PostgreSQL `pg_trgm` i indeksy GIN pod filtrowanie `LOWER(...) LIKE`.
+
 ## Komendy Symfony
 
 ### Migracja bazy danych
@@ -53,7 +55,7 @@ docker-compose restart symfony
 
 ### Uruchamianie testów
 ```bash
-docker-compose exec symfony php bin/phpunit
+docker-compose exec symfony php vendor/bin/phpunit
 ```
 
 ## Komendy Phoenix
@@ -81,5 +83,39 @@ docker-compose restart phoenix
 
 ### Uruchamianie testów
 ```bash
-docker-compose exec phoenix mix test
+docker-compose exec phoenix env MIX_ENV=test DB_HOST=phoenix-db mix test
 ```
+
+## Weryfikacja zadania rekrutacyjnego
+
+### 1) Jakość kodu (task 1)
+- Sprawdź logowanie:
+  - poprawny token: `http://localhost:8000/auth/nature_lover/<TOKEN>`
+  - zły token: powinien pojawić się komunikat flash `Invalid token or username`
+- Sprawdź like/unlike:
+  - zaloguj się i kliknij serce na tej samej fotografii kilka razy
+  - licznik powinien rosnąć/maleć poprawnie i nigdy nie schodzić poniżej `0`
+
+### 2) Import z PhoenixApi (task 2)
+- Otwórz profil użytkownika w Symfony (`/profile`).
+- Wpisz token PhoenixApi (np. z seeda Phoenix: `test_token_user1_abc123`) i kliknij **Save token**.
+- Kliknij **Import photos**:
+  - poprawny token -> komunikat o liczbie zaimportowanych zdjęć,
+  - błędny token -> komunikat o niepoprawnym tokenie.
+- Kliknij import drugi raz: nie powinny pojawić się duplikaty.
+
+### 3) Filtrowanie galerii (task 3)
+- Na stronie głównej użyj formularza filtrów:
+  - `location`
+  - `camera`
+  - `description`
+  - `taken_at`
+  - `username`
+- Filtry łączą się logiką `AND`.
+
+### 4) Rate limiting PhoenixApi (task 4)
+- Endpoint: `GET http://localhost:4000/api/photos` z nagłówkiem `access-token`.
+- Limity:
+  - per user: 5 importów/10 min,
+  - global: 1000 importów/godz.
+- Po przekroczeniu limitu API zwraca `429` i nagłówek `Retry-After`.

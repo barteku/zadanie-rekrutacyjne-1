@@ -4,14 +4,15 @@ declare(strict_types=1);
 namespace App\Likes;
 
 use App\Entity\Photo;
+use App\Entity\User;
 
 interface LikeRepositoryInterface
 {
-    public function unlikePhoto(Photo $photo): void;
+    public function toggleLike(Photo $photo, User $user): bool;
 
-    public function hasUserLikedPhoto(Photo $photo): bool;
-
-    public function createLike(Photo $photo): Like;
-
-    public function updatePhotoCounter(Photo $photo, int $increment): void;
+    /**
+     * @param array<int, int> $photoIds
+     * @return array<int, bool>
+     */
+    public function findLikedMapForPhotoIds(User $user, array $photoIds): array;
 }

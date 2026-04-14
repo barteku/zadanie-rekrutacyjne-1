@@ -13,13 +13,8 @@ class LikeService
         private LikeRepositoryInterface $likeRepository
     ) {}
 
-    public function execute(Photo $photo): void
+    public function toggle(Photo $photo, User $user): bool
     {
-        try {
-            $this->likeRepository->createLike($photo);
-            $this->likeRepository->updatePhotoCounter($photo, 1);
-        } catch (\Throwable $e) {
-            throw new \Exception('Something went wrong while liking the photo');
-        }
+        return $this->likeRepository->toggleLike($photo, $user);
     }
 }

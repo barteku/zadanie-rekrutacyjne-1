@@ -127,6 +127,44 @@
             padding-top: 30px;
             border-top: 2px solid #f0f0f0;
         }
+
+        .integration-card {
+            margin-top: 24px;
+            padding: 20px;
+            border-radius: 12px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+        }
+
+        .integration-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .integration-form input {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.95rem;
+        }
+
+        .integration-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .integration-actions button {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 600;
+            color: white;
+            background: #667eea;
+            cursor: pointer;
+        }
         
         .stat-item {
             text-align: center;
@@ -202,6 +240,32 @@
                 <div class="stat-number">{{ user.photos|length }}</div>
                 <div class="stat-label">Photos</div>
             </div>
+        </div>
+
+        <div class="integration-card">
+            <div class="profile-field-label">PhoenixApi integration</div>
+            <div class="profile-field-value">
+                Save your PhoenixApi token and import your photos.
+            </div>
+
+            <form method="post" action="{{ path('profile_save_phoenix_token') }}" class="integration-form">
+                <input type="hidden" name="_token" value="{{ csrf_token('phoenix-token') }}">
+                <input
+                    type="text"
+                    name="phoenix_api_token"
+                    value="{{ user.phoenixApiToken|default('') }}"
+                    placeholder="Paste PhoenixApi access token">
+                <div class="integration-actions">
+                    <button type="submit">Save token</button>
+                </div>
+            </form>
+
+            <form method="post" action="{{ path('profile_import_photos') }}" class="integration-form">
+                <input type="hidden" name="_token" value="{{ csrf_token('import-photos') }}">
+                <div class="integration-actions">
+                    <button type="submit">Import photos</button>
+                </div>
+            </form>
         </div>
         
         <div style="text-align: center;">
