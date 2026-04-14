@@ -5,28 +5,40 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Likes\LikeRepository;
+use App\Form\Model\PhotoFilterData;
+use App\Form\PhotoFilterType;
+use App\Likes\LikeRepositoryInterface;
 use App\Repository\PhotoRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 class HomeController extends AbstractController
 {
-    /**
-     * @Route("/", name="home")
-     * @return JsonResponse
-     */
-    public function index(Request $request, EntityManagerInterface $em, ManagerRegistry $managerRegistry): Response
+    #[Route('/', name: 'home')]
+    public function index(
+        Request $request,
+        EntityManagerInterface $em,
+        PhotoRepository $photoRepository,
+        LikeRepositoryInterface $likeRepository
+    ): Response
     {
-        $photoRepository = new PhotoRepository($managerRegistry);
-        $likeRepository = new LikeRepository($managerRegistry);
+        $filterData = new PhotoFilterData();
+        $filterForm = $this->createForm(PhotoFilterType::class, $filterData, [
+            'method' => 'GET',
+        ]);
+        $filterForm->handleRequest($request);
 
-        $photos = $photoRepository->findAllWithUsers();
+        $filters = [
+            'location' => trim((string) ($filterData->getLocation() ?? '')),
+            'camera' => trim((string) ($filterData->getCamera() ?? '')),
+            'description' => trim((string) ($filterData->getDescription() ?? '')),
+            'taken_at' => $filterData->getTakenAt()?->format('Y-m-d') ?? '',
+            'username' => trim((string) ($filterData->getUsername() ?? '')),
+        ];
+        $photos = $photoRepository->findFilteredWithUsers($filters);
 
         $session = $request->getSession();
         $userId = $session->get('user_id');
@@ -37,10 +49,8 @@ class HomeController extends AbstractController
             $currentUser = $em->getRepository(User::class)->find($userId);
 
             if ($currentUser) {
-                foreach ($photos as $photo) {
-                    $likeRepository->setUser($currentUser);
-                    $userLikes[$photo->getId()] = $likeRepository->hasUserLikedPhoto($photo);
-                }
+                $photoIds = array_map(static fn ($photo): int => (int) $photo->getId(), $photos);
+                $userLikes = $likeRepository->findLikedMapForPhotoIds($currentUser, $photoIds);
             }
         }
 
@@ -48,6 +58,7 @@ class HomeController extends AbstractController
             'photos' => $photos,
             'currentUser' => $currentUser,
             'userLikes' => $userLikes,
+            'filterForm' => $filterForm->createView(),
         ]);
     }
 }

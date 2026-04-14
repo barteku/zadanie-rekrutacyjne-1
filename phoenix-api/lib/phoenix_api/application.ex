@@ -5,6 +5,7 @@ defmodule PhoenixApi.Application do
   def start(_type, _args) do
     children = [
       PhoenixApi.Repo,
+      PhoenixApi.RateLimiter,
       {Phoenix.PubSub, name: PhoenixApi.PubSub},
       PhoenixApiWeb.Endpoint,
       {Finch, name: PhoenixApiFinch}

@@ -9,6 +9,55 @@
             margin-top: 30px;
             justify-content: center;
         }
+
+        .filters-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 0 auto 24px;
+            max-width: 1200px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        .filters-grid input {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.95rem;
+        }
+
+        .filters-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .filters-actions button,
+        .filters-actions a {
+            border: 0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .filters-actions button {
+            background: #667eea;
+            color: white;
+        }
+
+        .filters-actions a {
+            background: #f2f2f2;
+            color: #333;
+        }
         
         .photo-card {
             background: white;
@@ -153,6 +202,20 @@
 {% endblock %}
 
 {% block body %}
+    {{ form_start(filterForm, { attr: { class: 'filters-panel' } }) }}
+        <div class="filters-grid">
+            {{ form_widget(filterForm.location, { attr: { placeholder: 'Location' } }) }}
+            {{ form_widget(filterForm.camera, { attr: { placeholder: 'Camera' } }) }}
+            {{ form_widget(filterForm.description, { attr: { placeholder: 'Description' } }) }}
+            {{ form_widget(filterForm.takenAt, { attr: { placeholder: 'Taken at' } }) }}
+            {{ form_widget(filterForm.username, { attr: { placeholder: 'Username / name' } }) }}
+        </div>
+        <div class="filters-actions">
+            <button type="submit">Apply filters</button>
+            <a href="{{ path('home') }}">Reset</a>
+        </div>
+    {{ form_end(filterForm) }}
+
     {% if photos|length > 0 %}
         <div class="photo-grid">
             {% for photo in photos %}
@@ -160,8 +223,9 @@
                     <div class="photo-image-container">
                         <img src="{{ photo.imageUrl }}" alt="{{ photo.description }}">
                         {% if currentUser %}
-                            <a href="{{ path('photo_like', {id: photo.id}) }}" class="like-button {{ userLikes[photo.id] ? 'liked' : '' }}">
-                                {{ userLikes[photo.id] ? '❤️' : '🤍' }}
+                            {% set liked = userLikes[photo.id]|default(false) %}
+                            <a href="{{ path('photo_like', {id: photo.id}) }}" class="like-button {{ liked ? 'liked' : '' }}">
+                                {{ liked ? '❤️' : '🤍' }}
                                 <span>{{ photo.likeCounter }}</span>
                             </a>
                         {% else %}

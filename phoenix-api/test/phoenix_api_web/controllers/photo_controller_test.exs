@@ -1,11 +1,14 @@
 defmodule PhoenixApiWeb.PhotoControllerTest do
   use PhoenixApiWeb.ConnCase
 
+  alias PhoenixApi.RateLimiter
   alias PhoenixApi.Repo
   alias PhoenixApi.Accounts.User
   alias PhoenixApi.Media.Photo
 
   setup do
+    RateLimiter.reset!()
+
     user =
       %User{}
       |> User.changeset(%{api_token: "valid_test_token_123"})
@@ -66,13 +69,27 @@ defmodule PhoenixApiWeb.PhotoControllerTest do
 
       assert json_response(conn, 200) == %{
                "photos" => [
-                 %{"id" => photo1.id, "photo_url" => photo1.photo_url},
-                 %{"id" => photo2.id, "photo_url" => photo2.photo_url}
+                 %{
+                   "id" => photo1.id,
+                   "photo_url" => photo1.photo_url,
+                   "camera" => photo1.camera,
+                   "description" => photo1.description,
+                   "location" => photo1.location,
+                   "taken_at" => nil
+                 },
+                 %{
+                   "id" => photo2.id,
+                   "photo_url" => photo2.photo_url,
+                   "camera" => photo2.camera,
+                   "description" => photo2.description,
+                   "location" => photo2.location,
+                   "taken_at" => nil
+                 }
                ]
              }
     end
 
-    test "returns only id and photo_url fields", %{conn: conn, photo1: photo1} do
+    test "returns import payload fields", %{conn: conn, photo1: photo1} do
       conn =
         conn
         |> put_req_header("access-token", "valid_test_token_123")
@@ -84,16 +101,15 @@ defmodule PhoenixApiWeb.PhotoControllerTest do
       assert length(photos) > 0
 
       first_photo = List.first(photos)
-      assert Map.keys(first_photo) |> Enum.sort() == ["id", "photo_url"]
+      assert Map.keys(first_photo) |> Enum.sort() ==
+               ["camera", "description", "id", "location", "photo_url", "taken_at"]
+
       assert first_photo["id"] == photo1.id
       assert first_photo["photo_url"] == photo1.photo_url
-      refute Map.has_key?(first_photo, "camera")
-      refute Map.has_key?(first_photo, "lens")
-      refute Map.has_key?(first_photo, "description")
     end
 
     test "returns empty array when user has no photos", %{conn: conn} do
-      new_user =
+      _new_user =
         %User{}
         |> User.changeset(%{api_token: "new_user_token"})
         |> Repo.insert!()
@@ -134,6 +150,46 @@ defmodule PhoenixApiWeb.PhotoControllerTest do
       response = json_response(conn, 200)
       assert length(response["photos"]) == 1
       assert Enum.at(response["photos"], 0)["photo_url"] == "https://example.com/photo3.jpg"
+    end
+
+    test "returns 429 when per-user rate limit is exceeded", %{conn: conn} do
+      previous = Application.get_env(:phoenix_api, :import_rate_limit)
+
+      Application.put_env(:phoenix_api, :import_rate_limit,
+        user_limit: 2,
+        user_window_seconds: 600,
+        global_limit: 1000,
+        global_window_seconds: 3600
+      )
+
+      on_exit(fn ->
+        Application.put_env(:phoenix_api, :import_rate_limit, previous)
+        RateLimiter.reset!()
+      end)
+
+      RateLimiter.reset!()
+
+      conn1 =
+        conn
+        |> put_req_header("access-token", "valid_test_token_123")
+        |> get("/api/photos")
+
+      assert conn1.status == 200
+
+      conn2 =
+        build_conn()
+        |> put_req_header("access-token", "valid_test_token_123")
+        |> get("/api/photos")
+
+      assert conn2.status == 200
+
+      conn3 =
+        build_conn()
+        |> put_req_header("access-token", "valid_test_token_123")
+        |> get("/api/photos")
+
+      assert conn3.status == 429
+      assert json_response(conn3, 429) == %{"errors" => %{"detail" => "Too Many Requests"}}
     end
   end
 end
